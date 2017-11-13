@@ -11,7 +11,7 @@ var app = express();
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'jade');
+// app.set('view engine', 'jade');
 
 app.use(cors());
 
@@ -24,7 +24,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/',function(req,res){
-  res.sendFile(path.join(__dirname+'/index.html'));
+  res.sendFile(path.join(__dirname+'client/index.html'));
   //__dirname : It will resolve to your project folder.
 });
 
