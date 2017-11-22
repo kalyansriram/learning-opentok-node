@@ -25682,14 +25682,6 @@ page-home .mi {
   font-size: 2.3em;
 }
 
-page-home .scroll-content {
-  margin-top: 0 !important;
-}
-
-page-home .toolbar-background {
-  opacity: 0.4;
-}
-
 page-home .content {
   background: url("../assets/imgs/video-snap.png") no-repeat;
   background-size: 100% 100%;
@@ -25697,7 +25689,7 @@ page-home .content {
 
 page-home .bottom-section {
   z-index: 10;
-  background-color: rgba(47, 125, 225, 0.3);
+  background-color: rgba(47, 125, 225, 0.5);
   position: absolute;
   left: 0;
   right: 0;

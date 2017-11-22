@@ -157,32 +157,6 @@ var HomePage = (function () {
         this.session.disconnect();
         this.navCtrl.pop();
     };
-    // Add a participant to chat room
-    HomePage.prototype.addParticipant = function () {
-    };
-    /**
-     * Show the selected participant in main view
-     * @param participant
-     */
-    HomePage.prototype.participantDidSelect = function (event) {
-        var v = event.target;
-        var canvas = this.currentVideo.nativeElement;
-        var context = canvas.getContext('2d');
-        var cw = window.innerWidth;
-        var ch = window.innerHeight;
-        canvas.width = cw;
-        canvas.height = ch;
-        console.log(v, canvas);
-        console.log("inside play event");
-        this.updateBigVideo(v, context, cw, ch);
-    };
-    HomePage.prototype.updateBigVideo = function (v, c, w, h) {
-        console.log("this is vcwh", v, c, w, h, v.paused, v.ended);
-        if (v.paused || v.ended)
-            return false;
-        c.drawImage(v, 0, 0, w, h);
-        setTimeout(this.updateBigVideo, 20, v, c, w, h);
-    };
     HomePage.prototype.startCall = function () {
         var _this = this;
         // (optional) add server code here
@@ -237,9 +211,20 @@ var HomePage = (function () {
         var _this = this;
         this.session = OT.initSession(this.apiKey, this.sessionId);
         this.session.on('streamCreated', function (event) {
-            console.log("this is the subscriber event", event);
-            var subscriber = _this.session.subscribe(event.stream, 'subscriber', { insertMode: 'append', width: '100%', height: '100%', style: { buttonDisplayMode: 'off' } }, _this.handleError);
-            console.log("this is the subscriber", subscriber);
+            _this.addParticipant(event.stream);
+            var subscriber = _this.session.subscribe(event.stream, { insertDefaultUI: false, insertMode: 'append', width: '100%', height: '100%' }, _this.handleError);
+            subscriber.on('videoElementCreated', function (event) {
+                var id = event.target.stream.id;
+                var participant = _this.getParticipantOfId(id);
+                if (participant) {
+                    console.log("Add video for participant", participant);
+                    participant.video = event.element;
+                }
+                // if(this.participants.length == 1) {
+                //   this.showParticipantInMainView(participant);
+                // }
+                console.log("Current participants ", _this.participants);
+            });
             subscriber.on({
                 videoDisabled: function (event) {
                     console.log("inside video disabled");
@@ -251,16 +236,24 @@ var HomePage = (function () {
                 }
             });
         });
+        this.session.on("streamDestroyed", function (event) {
+            console.log("Stream " + event.stream.name + " ended. " + event.reason);
+            var _id = event.stream.id;
+            var _participant = _this.getParticipantOfId(_id);
+            var deleteIndex = _this.participants.indexOf(_participant);
+            _this.participants.splice(deleteIndex, 1);
+        });
+        var pub_name = this.userName;
         // Create a publisher
         this.publisher = OT.initPublisher('publisher', {
             insertMode: 'append',
             width: '100%',
             height: '100%',
-            name: "John",
-            style: { nameDisplayMode: "off", buttonDisplayMode: 'off' }
+            name: pub_name,
+            style: { nameDisplayMode: "off" }
         }, this.handleError);
         this.publisher.on('videoElementCreated', function (event) {
-            console.log("vidoe published", event);
+            console.log("Video published.");
         });
         // Connect to the session
         this.session.connect(this.token, function (error) {
@@ -274,22 +267,42 @@ var HomePage = (function () {
             }
         });
     };
+    // Add the participant details from the stream object
+    HomePage.prototype.addParticipant = function (stream) {
+        var participant = {
+            id: stream.id,
+            name: stream.name
+        };
+        console.log("P added ", participant);
+        this.participants.push(participant);
+    };
+    // Return the participant for given id
+    HomePage.prototype.getParticipantOfId = function (id) {
+        var participant = this.participants.find(function (p) {
+            return p.id == id;
+        });
+        return participant;
+    };
+    // Show the given participant in main view
+    HomePage.prototype.showParticipantInMainView = function (participant) {
+        document.getElementById("mainView").innerHTML = "";
+        document.getElementById("mainView").appendChild(participant.video);
+    };
     __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["_8" /* ViewChild */])('currentVideo'),
         __metadata("design:type", Object)
     ], HomePage.prototype, "currentVideo", void 0);
     __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["_9" /* ViewChildren */])(__WEBPACK_IMPORTED_MODULE_3__directives_video_pane_video_pane__["a" /* VideoPaneDirective */]),
-        __metadata("design:type", typeof (_a = typeof __WEBPACK_IMPORTED_MODULE_1__angular_core__["T" /* QueryList */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__angular_core__["T" /* QueryList */]) === "function" && _a || Object)
+        __metadata("design:type", __WEBPACK_IMPORTED_MODULE_1__angular_core__["T" /* QueryList */])
     ], HomePage.prototype, "videoPanes", void 0);
     HomePage = __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["m" /* Component */])({
-            selector: 'page-home',template:/*ion-inline-start:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/home/home.html"*/'<ion-header>\n    <ion-navbar color="primary" hideBackButton="true">\n        <ion-title>\n            Snap Chat\n        </ion-title>\n    </ion-navbar>\n</ion-header>\n\n<ion-content>\n\n    <!-- <div id="subscriber1" style="height: 100%"></div> -->\n\n    <div class="main-view" style="height: 100%;"> \n        <canvas style="width:\'100%\';height:\'100$\'" #currentVideo></canvas>\n    </div>\n    \n\n    <!-- bottom section -->\n    <div class="bottom-section">\n\n\n        <div class="controls">\n            <button ion-button icon-only class="button-audio" (click)="toggleAudio()"> \n                  <ion-icon [name]="audioState ? \'mic\' : \'mic-off\'"  color="dark"></ion-icon>\n                </button>\n            <button ion-button icon-only class="button-call" (click)="endCall()"> \n                  <ion-icon name="call"></ion-icon>\n                </button>\n            <button ion-button icon-only class="button-video" (click)="toggleVideo()">\n                  <i [class]="videoState ? \'mi mi-videocam\' : \'mi mi-videocam-off\'"></i>\n                  <!-- <ion-icon name="videocam"></ion-icon> -->\n                </button>\n        </div>\n\n\n        <div class="participants" id="subscriber">\n            <div id="publisher" class="video-stream participant" (click)="participantDidSelect($event)"></div>\n\n            <!-- <div *ngFor="let subscriber of subscribers" class="participant">\n                <div videoPane [subscriber]="subscriber" class="video-stream" (click)="participantDidSelect(subscriber, $event)"></div>\n                <div class="name"></div>\n            </div> -->\n\n            <!-- <div class="participant add-participant">\n                <button ion-button icon-only full (click)="addParticipant()">\n                    <ion-icon name="md-add"></ion-icon>\n                </button>\n            </div> -->\n        </div>\n\n    </div>\n    <!-- <div id="videos">\n        <div id="subscriber"></div>\n        <div id="publisher"></div>\n\n        <div id="controls">\n    	<a (click)=\'toggleVideo();\' class="icon-circle icon-circle-outline">\n          <i class="material-icons">{{cameraStatus()}}</i>\n        </a>\n        <a (click)=\'toggleAudio();\' class="icon-circle icon-circle-outline">\n          <i class="material-icons">{{micStatus()}}</i>\n        </a>\n        <a (click)=\'endCall();\' color="red"  class="red-background icon-circle icon-circle-outline">\n          <i class="material-icons">call_end</i>\n        </a>\n        \n    </div>\n    </div>\n     -->\n</ion-content>'/*ion-inline-end:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/home/home.html"*/
+            selector: 'page-home',template:/*ion-inline-start:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/home/home.html"*/'<ion-header>\n    <ion-navbar color="primary" hideBackButton="true">\n        <ion-title>\n            Snap Chat\n        </ion-title>\n    </ion-navbar>\n</ion-header>\n\n<ion-content>\n\n    <!-- <div id="subscriber1" style="height: 100%"></div> -->\n\n    <div id="mainView" class="main-view" style="height: 100%;"></div>\n\n    <!-- bottom section -->\n    <div class="bottom-section">\n\n\n        <div class="controls">\n            <button ion-button icon-only class="button-audio" (click)="toggleAudio()"> \n                  <ion-icon [name]="audioState ? \'mic\' : \'mic-off\'"  color="dark"></ion-icon>\n                </button>\n            <button ion-button icon-only class="button-call" (click)="endCall()"> \n                  <ion-icon name="call"></ion-icon>\n                </button>\n            <button ion-button icon-only class="button-video" (click)="toggleVideo()">\n                  <i [class]="videoState ? \'mi mi-videocam\' : \'mi mi-videocam-off\'"></i>\n                  <!-- <ion-icon name="videocam"></ion-icon> -->\n                </button>\n        </div>\n\n\n        <!-- <div class="participants" id="subscriber">\n            <div id="publisher" class="video-stream participant" (click)="participantDidSelect(this)"></div>\n        </div> -->\n\n        <div class="participants">\n            <div id="publisher" class="video-stream participant"></div>\n            <div class="participant" *ngFor="let participant of participants" (click)="showParticipantInMainView(participant)">\n                <div class="name">{{participant.name}}</div>\n            </div>\n        </div>\n\n    </div>\n    <!-- <div id="videos">\n        <div id="subscriber"></div>\n        <div id="publisher"></div>\n\n        <div id="controls">\n    	<a (click)=\'toggleVideo();\' class="icon-circle icon-circle-outline">\n          <i class="material-icons">{{cameraStatus()}}</i>\n        </a>\n        <a (click)=\'toggleAudio();\' class="icon-circle icon-circle-outline">\n          <i class="material-icons">{{micStatus()}}</i>\n        </a>\n        <a (click)=\'endCall();\' color="red"  class="red-background icon-circle icon-circle-outline">\n          <i class="material-icons">call_end</i>\n        </a>\n        \n    </div>\n    </div>\n     -->\n</ion-content>'/*ion-inline-end:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/home/home.html"*/
         }),
-        __metadata("design:paramtypes", [typeof (_b = typeof __WEBPACK_IMPORTED_MODULE_2__angular_common_http__["a" /* HttpClient */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_2__angular_common_http__["a" /* HttpClient */]) === "function" && _b || Object, typeof (_c = typeof __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["d" /* NavController */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["d" /* NavController */]) === "function" && _c || Object, typeof (_d = typeof __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["e" /* NavParams */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["e" /* NavParams */]) === "function" && _d || Object, typeof (_e = typeof __WEBPACK_IMPORTED_MODULE_1__angular_core__["W" /* Renderer2 */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_1__angular_core__["W" /* Renderer2 */]) === "function" && _e || Object, typeof (_f = typeof __WEBPACK_IMPORTED_MODULE_4__ionic_native_diagnostic__["a" /* Diagnostic */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_4__ionic_native_diagnostic__["a" /* Diagnostic */]) === "function" && _f || Object, typeof (_g = typeof __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["f" /* Platform */] !== "undefined" && __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["f" /* Platform */]) === "function" && _g || Object])
+        __metadata("design:paramtypes", [__WEBPACK_IMPORTED_MODULE_2__angular_common_http__["a" /* HttpClient */], __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["d" /* NavController */], __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["e" /* NavParams */], __WEBPACK_IMPORTED_MODULE_1__angular_core__["W" /* Renderer2 */], __WEBPACK_IMPORTED_MODULE_4__ionic_native_diagnostic__["a" /* Diagnostic */], __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["f" /* Platform */]])
     ], HomePage);
     return HomePage;
-    var _a, _b, _c, _d, _e, _f, _g;
 }());
 
 //# sourceMappingURL=home.js.map
