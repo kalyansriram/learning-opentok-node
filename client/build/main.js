@@ -78,7 +78,7 @@ var LoginPage = (function () {
     };
     LoginPage = __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_0__angular_core__["m" /* Component */])({
-            selector: 'page-login',template:/*ion-inline-start:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/login/login.html"*/'<ion-header>\n    <ion-navbar color="primary">\n        <ion-title>Snap Chat</ion-title>\n    </ion-navbar>\n</ion-header>\n\n\n<ion-content>\n\n    <div class="vertical-center-div">\n        <form (ngSubmit)=\'joinCall()\'>\n            <ion-list>\n\n                <ion-item>\n                    <ion-label fixed>Name</ion-label>\n                    <ion-input type="text" autocapitalize="none" name="userName" [(ngModel)]="userName" required></ion-input>\n                </ion-item>\n\n                <ion-item>\n                    <ion-label fixed>Chat Room</ion-label>\n                    <ion-input type="text" autocapitalize="none" name="roomName" [(ngModel)]="roomName" required></ion-input>\n                </ion-item>\n\n            </ion-list>\n\n            <div padding>\n                <button type="submit" ion-button color="primary" full text-uppercase>Join Call</button>\n            </div>\n\n        </form>\n    </div>\n\n</ion-content>'/*ion-inline-end:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/login/login.html"*/,
+            selector: 'page-login',template:/*ion-inline-start:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/login/login.html"*/'<ion-header>\n    <ion-navbar color="primary">\n        <ion-title>Snap Chat</ion-title>\n    </ion-navbar>\n</ion-header>\n\n\n<ion-content>\n\n    <div class="top-section">\n\n    </div>\n    <div class="login-wrapper">\n        <div class="login-section">\n            <form (ngSubmit)=\'joinCall()\'>\n                <ion-list mode="ios">\n                    <ion-item mode="ios">\n                        <ion-label fixed>Name</ion-label>\n                        <ion-input type="text" autocapitalize="none" name="userName" [(ngModel)]="userName" required></ion-input>\n                    </ion-item>\n\n                    <ion-item mode="ios">\n                        <ion-label fixed>Chat Room</ion-label>\n                        <ion-input type="text" autocapitalize="none" name="roomName" [(ngModel)]="roomName" required></ion-input>\n                    </ion-item>\n\n                </ion-list>\n\n                <div padding>\n                    <button type="submit" ion-button round color="primary" full text-uppercase>Join Call</button>\n                </div>\n            </form>\n        </div>\n    </div>\n\n\n</ion-content>'/*ion-inline-end:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/login/login.html"*/,
         }),
         __metadata("design:paramtypes", [__WEBPACK_IMPORTED_MODULE_1_ionic_angular__["d" /* NavController */], __WEBPACK_IMPORTED_MODULE_1_ionic_angular__["e" /* NavParams */]])
     ], LoginPage);
@@ -129,16 +129,29 @@ var HomePage = (function () {
         this.audioState = true;
         this.videoState = true;
         this.subscribers = [];
+        this.activeParticipant = null;
+        this.showDefaultPic = false;
         this.roomName = this.navParams.get("roomName");
         this.userName = this.navParams.get("userName");
     }
     HomePage.prototype.ngOnInit = function () {
-        if (this.platform.is("ios") || this.platform.is("android")) {
-            this.requestRequiredPermissions();
-        }
-        else {
-            this.startCall();
-        }
+        this.requestRequiredPermissions();
+    };
+    HomePage.prototype.ionViewDidEnter = function () {
+        this.initializeBackButtonCustomHandler();
+    };
+    HomePage.prototype.ionViewWillLeave = function () {
+        // Unregister the custom back button action for this page
+        this.unregisterBackButtonAction && this.unregisterBackButtonAction();
+    };
+    HomePage.prototype.initializeBackButtonCustomHandler = function () {
+        var _this = this;
+        this.unregisterBackButtonAction = this.platform.registerBackButtonAction(function () {
+            _this.handleBack();
+        }, 10);
+    };
+    HomePage.prototype.handleBack = function () {
+        this.endCall();
     };
     // Toggle audio state
     HomePage.prototype.toggleAudio = function () {
@@ -154,7 +167,9 @@ var HomePage = (function () {
     };
     HomePage.prototype.endCall = function () {
         console.log('inside end call');
-        this.session.disconnect();
+        if (this.session && this.isConnected) {
+            this.session.disconnect();
+        }
         this.navCtrl.pop();
     };
     HomePage.prototype.startCall = function () {
@@ -172,7 +187,8 @@ var HomePage = (function () {
     // Handling all of our errors here by alerting them
     HomePage.prototype.handleError = function (error) {
         if (error) {
-            alert(error.message);
+            alert("Please check your network connection and try again.");
+            this.endCall();
         }
     };
     HomePage.prototype.requestRequiredPermissions = function () {
@@ -204,6 +220,13 @@ var HomePage = (function () {
                 alert("We need camera and microphone permissions to start the video call");
             }
         }, function (error) {
+            if (error == "cordova_not_available") {
+                _this.startCall();
+            }
+            else {
+                alert("Please check your network connection and try again.");
+                _this.endCall();
+            }
             console.error("The following error occurred: " + error);
         });
     };
@@ -220,19 +243,27 @@ var HomePage = (function () {
                     console.log("Add video for participant", participant);
                     participant.video = event.element;
                 }
-                // if(this.participants.length == 1) {
-                //   this.showParticipantInMainView(participant);
-                // }
+                if (!_this.activeParticipant) {
+                    _this.showParticipantInMainView(participant);
+                }
                 console.log("Current participants ", _this.participants);
             });
             subscriber.on({
                 videoDisabled: function (event) {
                     console.log("inside video disabled");
                     subscriber.setStyle('videoDisabledDisplayMode', 'on');
+                    var _id = event.target.stream.id;
+                    if (_id == _this.activeParticipant.id) {
+                        _this.showDefaultPic = true;
+                    }
                 },
                 videoEnabled: function (event) {
                     console.log("inside video enabled");
                     subscriber.setStyle('videoDisabledDisplayMode', 'off');
+                    var _id = event.target.stream.id;
+                    if (_id == _this.activeParticipant.id) {
+                        _this.showDefaultPic = false;
+                    }
                 }
             });
         });
@@ -242,6 +273,10 @@ var HomePage = (function () {
             var _participant = _this.getParticipantOfId(_id);
             var deleteIndex = _this.participants.indexOf(_participant);
             _this.participants.splice(deleteIndex, 1);
+            if (_this.participants.length > 0) {
+                var p = _this.participants[0];
+                _this.showParticipantInMainView(p);
+            }
         });
         var pub_name = this.userName;
         // Create a publisher
@@ -285,8 +320,12 @@ var HomePage = (function () {
     };
     // Show the given participant in main view
     HomePage.prototype.showParticipantInMainView = function (participant) {
-        document.getElementById("mainView").innerHTML = "";
-        document.getElementById("mainView").appendChild(participant.video);
+        if (participant != this.activeParticipant) {
+            this.activeParticipant = participant;
+            this.showDefaultPic = false;
+            document.getElementById("mainView").innerHTML = "";
+            document.getElementById("mainView").appendChild(participant.video);
+        }
     };
     __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["_8" /* ViewChild */])('currentVideo'),
@@ -298,7 +337,7 @@ var HomePage = (function () {
     ], HomePage.prototype, "videoPanes", void 0);
     HomePage = __decorate([
         Object(__WEBPACK_IMPORTED_MODULE_1__angular_core__["m" /* Component */])({
-            selector: 'page-home',template:/*ion-inline-start:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/home/home.html"*/'<ion-header>\n    <ion-navbar color="primary" hideBackButton="true">\n        <ion-title>\n            Snap Chat\n        </ion-title>\n    </ion-navbar>\n</ion-header>\n\n<ion-content>\n\n    <!-- <div id="subscriber1" style="height: 100%"></div> -->\n\n    <div id="mainView" class="main-view" style="height: 100%;"></div>\n\n    <!-- bottom section -->\n    <div class="bottom-section">\n\n\n        <div class="controls">\n            <button ion-button icon-only class="button-audio" (click)="toggleAudio()"> \n                  <ion-icon [name]="audioState ? \'mic\' : \'mic-off\'"  color="dark"></ion-icon>\n                </button>\n            <button ion-button icon-only class="button-call" (click)="endCall()"> \n                  <ion-icon name="call"></ion-icon>\n                </button>\n            <button ion-button icon-only class="button-video" (click)="toggleVideo()">\n                  <i [class]="videoState ? \'mi mi-videocam\' : \'mi mi-videocam-off\'"></i>\n                  <!-- <ion-icon name="videocam"></ion-icon> -->\n                </button>\n        </div>\n\n\n        <!-- <div class="participants" id="subscriber">\n            <div id="publisher" class="video-stream participant" (click)="participantDidSelect(this)"></div>\n        </div> -->\n\n        <div class="participants">\n            <div id="publisher" class="video-stream participant"></div>\n            <div class="participant" *ngFor="let participant of participants" (click)="showParticipantInMainView(participant)">\n                <div class="name">{{participant.name}}</div>\n            </div>\n        </div>\n\n    </div>\n    <!-- <div id="videos">\n        <div id="subscriber"></div>\n        <div id="publisher"></div>\n\n        <div id="controls">\n    	<a (click)=\'toggleVideo();\' class="icon-circle icon-circle-outline">\n          <i class="material-icons">{{cameraStatus()}}</i>\n        </a>\n        <a (click)=\'toggleAudio();\' class="icon-circle icon-circle-outline">\n          <i class="material-icons">{{micStatus()}}</i>\n        </a>\n        <a (click)=\'endCall();\' color="red"  class="red-background icon-circle icon-circle-outline">\n          <i class="material-icons">call_end</i>\n        </a>\n        \n    </div>\n    </div>\n     -->\n</ion-content>'/*ion-inline-end:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/home/home.html"*/
+            selector: 'page-home',template:/*ion-inline-start:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/home/home.html"*/'<ion-header>\n    <ion-navbar color="primary" hideBackButton="true">\n        <ion-title>\n            Snap Chat\n        </ion-title>\n    </ion-navbar>\n</ion-header>\n\n<ion-content>\n\n    <!-- <div id="subscriber1" style="height: 100%"></div> -->\n\n    <div id="mainView" class="main-view" style="height: 100%;">\n        <div *ngIf="participants.length == 0">\n            <h3>No participants in the call.</h3>\n        </div>\n    </div>\n    <!-- <div class="no-video-pic" *ngIf="showDefaultPic"></div> -->\n\n    <!-- bottom section -->\n    <div class="bottom-section">\n\n\n        <div class="controls">\n            <button ion-button icon-only class="button-audio" (click)="toggleAudio()"> \n                  <ion-icon [name]="audioState ? \'mic\' : \'mic-off\'"  color="dark"></ion-icon>\n                </button>\n            <button ion-button icon-only class="button-call" (click)="endCall()"> \n                  <ion-icon name="call"></ion-icon>\n                </button>\n            <button ion-button icon-only class="button-video" (click)="toggleVideo()">\n                  <i [class]="videoState ? \'mi mi-videocam\' : \'mi mi-videocam-off\'"></i>\n                  <!-- <ion-icon name="videocam"></ion-icon> -->\n                </button>\n        </div>\n\n\n        <!-- <div class="participants" id="subscriber">\n            <div id="publisher" class="video-stream participant" (click)="participantDidSelect(this)"></div>\n        </div> -->\n\n        <div class="participants">\n            <div id="publisher" class="video-stream participant"></div>\n            <div class="participant" *ngFor="let participant of participants; let i = index" (click)="showParticipantInMainView(participant)" [ngClass]="{\'active\': participant == activeParticipant}">\n                <div class="name">{{participant.name | slice: 0: 1}}</div>\n            </div>\n        </div>\n\n    </div>\n    <!-- <div id="videos">\n        <div id="subscriber"></div>\n        <div id="publisher"></div>\n\n        <div id="controls">\n    	<a (click)=\'toggleVideo();\' class="icon-circle icon-circle-outline">\n          <i class="material-icons">{{cameraStatus()}}</i>\n        </a>\n        <a (click)=\'toggleAudio();\' class="icon-circle icon-circle-outline">\n          <i class="material-icons">{{micStatus()}}</i>\n        </a>\n        <a (click)=\'endCall();\' color="red"  class="red-background icon-circle icon-circle-outline">\n          <i class="material-icons">call_end</i>\n        </a>\n        \n    </div>\n    </div>\n     -->\n</ion-content>'/*ion-inline-end:"/Users/kalyanaraman/Documents/OpenTok/video-chat/src/pages/home/home.html"*/
         }),
         __metadata("design:paramtypes", [__WEBPACK_IMPORTED_MODULE_2__angular_common_http__["a" /* HttpClient */], __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["d" /* NavController */], __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["e" /* NavParams */], __WEBPACK_IMPORTED_MODULE_1__angular_core__["W" /* Renderer2 */], __WEBPACK_IMPORTED_MODULE_4__ionic_native_diagnostic__["a" /* Diagnostic */], __WEBPACK_IMPORTED_MODULE_0_ionic_angular__["f" /* Platform */]])
     ], HomePage);

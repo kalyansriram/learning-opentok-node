@@ -3,8 +3,8 @@ var router = express.Router();
 var path = require('path');
 var _ = require('lodash');
 
-var apiKey = process.env.TOKBOX_API_KEY;
-var secret = process.env.TOKBOX_SECRET;
+var apiKey = "45997932";
+var secret = "51f64e316985133645992cc6fca0e625fa41cb07";
 
 if (!apiKey || !secret) {
   console.error('=========================================================================================================');
