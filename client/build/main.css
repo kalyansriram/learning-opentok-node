@@ -25790,10 +25790,15 @@ page-home .bottom-section .participants .participant {
   -webkit-align-items: center;
   -ms-flex-align: center;
   align-items: center;
-  -webkit-box-pack: center;
-  -webkit-justify-content: center;
-  -ms-flex-pack: center;
-  justify-content: center;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: column;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  -webkit-box-pack: space-evenly;
+  -webkit-justify-content: space-evenly;
+  -ms-flex-pack: space-evenly;
+  justify-content: space-evenly;
 }
 
 page-home .bottom-section .participants .participant.active {
@@ -25819,6 +25824,18 @@ page-home .bottom-section .participants .participant .name {
   text-transform: uppercase;
   padding: 8px;
   text-align: center;
+}
+
+page-home .bottom-section .participants .participant .full-name {
+  color: white;
+  text-align: left;
+  width: 100%;
+  padding: 5px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  text-transform: uppercase;
+  font-size: 11px;
 }
 
 page-home .bottom-section .participants .participant:not(:first-child) {
