@@ -175,7 +175,7 @@ var HomePage = (function () {
     HomePage.prototype.startCall = function () {
         var _this = this;
         // (optional) add server code here
-        var SERVER_BASE_URL = 'https://videochat-opentok-node.herokuapp.com';
+        var SERVER_BASE_URL = 'https://opentok-videochat-testing.herokuapp.com';
         this.http.get(SERVER_BASE_URL + '/room/' + this.roomName).subscribe(function (res) {
             console.log(res);
             _this.apiKey = res.apiKey;
